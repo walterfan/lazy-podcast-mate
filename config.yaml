@@ -1,0 +1,105 @@
+# Lazy Podcast Mate — behavioural configuration.
+# Secrets belong in .env, NOT here. Any key matching api_key/token/secret/password
+# is rejected at load time.
+
+# -------- Cleaning --------
+cleaning:
+  # Maximum input article size in bytes. Reject larger files.
+  max_input_bytes: 5_000_000
+  # Term dictionary: written form -> spoken form.
+  # Each entry: {from: "...", to: "...", case_sensitive: bool, word_boundary: bool}
+  terms:
+    - { from: "K8s",  to: "Kubernetes", case_sensitive: true,  word_boundary: true }
+    - { from: "API",  to: "接口",       case_sensitive: true,  word_boundary: true }
+    - { from: "LLM",  to: "大模型",     case_sensitive: true,  word_boundary: true }
+
+# -------- Chunking --------
+chunking:
+  # Maximum characters per chunk sent to the TTS provider.
+  max_chars: 800
+  # Inter-chunk silence added during post-production (milliseconds).
+  inter_chunk_silence_ms: 250
+
+# -------- Script rewriting (LLM) --------
+script:
+  # Prompt version checked into script/prompts/<version>.md
+  # v2 (default) adds explicit handling for code / image / table placeholders
+  # emitted by the ingestion layer. Use v1 only if you need to reproduce
+  # pre-0.2 behaviour.
+  prompt_version: v2
+  # Soft upper bound on cleaned-article estimated tokens (chars/2 heuristic).
+  token_budget: 12000
+  # Sampling parameters.
+  # Set any of these to `null` (or the string "omit") to drop the field from
+  # the request body — REQUIRED for reasoning-tier models that reject these
+  # parameters, e.g. Anthropic `claude-opus-4-7`, OpenAI `o1`/`o3`.
+  # Defaults preserve previous behaviour for standard chat models.
+  temperature: null    # was 0.5; set to null for claude-opus-4-7 / o1 / o3
+  top_p: null          # only set if you really need to override the server default
+  max_tokens: null     # null = let the server decide (Anthropic falls back to 4096)
+  # Retry policy for transient LLM failures (network / 429 / 5xx).
+  retry:
+    max_attempts: 4
+    initial_delay_seconds: 1.0
+    backoff_factor: 2.0
+    max_delay_seconds: 30.0
+
+# -------- TTS --------
+tts:
+  # Voice ID — depends on the active TTS_PROVIDER (see README).
+  # Azure examples: zh-CN-YunjianNeural (calm male, Chinese), en-US-AndrewNeural (EN male).
+  # Volcano examples: zh_male_zhoujielun_emo_v2_mars_bigtts.
+  # CosyVoice examples: longfei, longjie.
+  voice_id: "zh-CN-YunjianNeural"
+  # Speaking rate. MUST be in [0.9, 0.95].
+  rate: 0.92
+  # Volume as a linear scale (1.0 = provider default).
+  volume: 1.0
+  # Concurrent chunk synthesis workers.
+  concurrency: 4
+  # Per-chunk retry policy.
+  retry:
+    max_attempts: 4
+    initial_delay_seconds: 1.0
+    backoff_factor: 2.0
+    max_delay_seconds: 30.0
+  # Failure policy: "strict" aborts the run on any permanent failure;
+  # "lenient" flags the chunk in run.log and continues.
+  failure_mode: strict
+
+# -------- Audio post-production --------
+post:
+  fade_in_ms: 500
+  fade_out_ms: 500
+  # Background music file (absolute or relative to project root). Leave empty for none.
+  bgm_path: ""
+  # RMS ratio of BGM to voice. MUST be in [0.10, 0.15].
+  bgm_ratio: 0.12
+  # Loudness normalisation target (EBU R128 / podcast standard).
+  loudness_target_lufs: -16.0
+  loudness_true_peak_dbtp: -1.0
+  loudness_tolerance_lu: 1.0
+  # Light noise reduction via ffmpeg afftdn.
+  denoise: true
+
+# -------- Output --------
+output:
+  # Output directory for final MP3 files.
+  directory: ./data/output
+  # Filename pattern. Supports {date}, {slug}, {run_id}, {title}.
+  filename_pattern: "{date}-{slug}.mp3"
+  # Policy when the target file already exists: "error" or "suffix".
+  on_existing: suffix
+  # ID3 metadata.
+  id3:
+    artist: "Lazy Podcast Mate"
+    album: "Lazy Podcast Mate"
+  # Run data directory (intermediate artefacts).
+  run_data_directory: ./data/runs
+  # History log.
+  history_file: ./data/history.jsonl
+
+# -------- Logging --------
+logging:
+  # One of: DEBUG, INFO, WARNING, ERROR.
+  level: INFO

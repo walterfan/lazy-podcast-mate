@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lazy-podcast-mate"
+version = "0.2.0"
+description = "Turn an article into a publish-ready podcast MP3 with one command."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "Walter Fan" }]
+dependencies = [
+    "python-dotenv>=1.0.0,<2.0.0",
+    "pydub>=0.25.1,<0.26.0",
+    # pydub imports `audioop`, which was removed from the stdlib in Python 3.13.
+    "audioop-lts>=0.2.1; python_version >= '3.13'",
+    "requests>=2.31.0,<3.0.0",
+    "PyYAML>=6.0,<7.0",
+    "mutagen>=1.47.0,<2.0.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4.0,<9.0.0",
+    "pytest-mock>=3.11.0,<4.0.0",
+]
+
+[project.scripts]
+lazy-podcast-mate = "lazy_podcast_mate.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["lazy_podcast_mate*"]
+exclude = ["tests*", "examples*"]
+
+[tool.setuptools.package-data]
+lazy_podcast_mate = ["script/prompts/*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q"
