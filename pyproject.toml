@@ -8,7 +8,7 @@ version = "0.2.0"
 description = "Turn an article into a publish-ready podcast MP3 with one command."
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT"
+license = "Apache-2.0"
 authors = [{ name = "Walter Fan" }]
 dependencies = [
     "python-dotenv>=1.0.0,<2.0.0",

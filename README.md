@@ -1,5 +1,7 @@
 # Lazy Podcast Mate
 
+[中文说明](README_zh.md)
+
 Turn an original article into a publish-ready podcast MP3 with a single command.
 
 Input: a Markdown / TXT / HTML article on your disk.
@@ -166,4 +168,4 @@ lazy_podcast_mate/
 
 ## License
 
-MIT.
+Apache License 2.0. See [LICENSE](LICENSE).
