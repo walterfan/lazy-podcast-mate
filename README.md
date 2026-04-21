@@ -12,6 +12,7 @@ Output: a 320 kbps MP3 with correct ID3 tags, calm-narrator voice, BGM, fades, a
 ## Requirements
 
 - Python 3.10 or newer
+- Poetry
 - `ffmpeg` on your `PATH`
   - macOS:   `brew install ffmpeg`
   - Ubuntu:  `sudo apt install ffmpeg`
@@ -22,9 +23,7 @@ Output: a 320 kbps MP3 with correct ID3 tags, calm-narrator voice, BGM, fades, a
 ## Install
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -e .
+poetry install
 ```
 
 ## Configure
@@ -64,7 +63,7 @@ tts:
 Then run:
 
 ```bash
-lazy-podcast-mate --input examples/sample.md
+poetry run lazy-podcast-mate --input examples/sample.md
 ```
 
 On success the CLI prints the path to the final MP3 (default: `data/output/<date>-<slug>.mp3`).
@@ -74,7 +73,7 @@ Intermediate artefacts (article JSON, script, per-chunk audio, run log) live und
 To preview the rewritten script without calling TTS:
 
 ```bash
-lazy-podcast-mate --input examples/sample.md --dry-run-script
+poetry run lazy-podcast-mate --input examples/sample.md --dry-run-script
 ```
 
 ## Supported providers
@@ -128,11 +127,11 @@ Source articles routinely contain elements that make no sense when read aloud â€
 ## Common flags
 
 ```bash
-lazy-podcast-mate --input article.md                       # one-shot run
-lazy-podcast-mate --input article.md --dry-run-script      # print rewritten script and stop
-lazy-podcast-mate --input article.md --run-id 2026-04-18-hello   # resume a specific run
-lazy-podcast-mate --input article.md --force-stage script  # redo from the script stage down
-lazy-podcast-mate --input article.md --lenient             # keep going past a permanently-failed chunk
+poetry run lazy-podcast-mate --input article.md                       # one-shot run
+poetry run lazy-podcast-mate --input article.md --dry-run-script      # print rewritten script and stop
+poetry run lazy-podcast-mate --input article.md --run-id 2026-04-18-hello   # resume a specific run
+poetry run lazy-podcast-mate --input article.md --force-stage script  # redo from the script stage down
+poetry run lazy-podcast-mate --input article.md --lenient             # keep going past a permanently-failed chunk
 ```
 
 ## Troubleshooting

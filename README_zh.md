@@ -12,6 +12,7 @@
 ## 环境要求
 
 - Python 3.10 或更高版本
+- Poetry
 - `ffmpeg` 已加入 `PATH`
   - macOS: `brew install ffmpeg`
   - Ubuntu: `sudo apt install ffmpeg`
@@ -22,9 +23,7 @@
 ## 安装
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -e .
+poetry install
 ```
 
 ## 配置
@@ -64,7 +63,7 @@ tts:
 然后执行：
 
 ```bash
-lazy-podcast-mate --input examples/sample.md
+poetry run lazy-podcast-mate --input examples/sample.md
 ```
 
 成功后，CLI 会打印最终 MP3 的路径（默认：`data/output/<date>-<slug>.mp3`）。
@@ -74,7 +73,7 @@ lazy-podcast-mate --input examples/sample.md
 如果只想预览改写后的脚本而不调用 TTS：
 
 ```bash
-lazy-podcast-mate --input examples/sample.md --dry-run-script
+poetry run lazy-podcast-mate --input examples/sample.md --dry-run-script
 ```
 
 ## 支持的提供商
@@ -128,11 +127,11 @@ lazy-podcast-mate --input examples/sample.md --dry-run-script
 ## 常用参数
 
 ```bash
-lazy-podcast-mate --input article.md                       # 一次性完整运行
-lazy-podcast-mate --input article.md --dry-run-script      # 只打印改写脚本后停止
-lazy-podcast-mate --input article.md --run-id 2026-04-18-hello   # 继续指定 run
-lazy-podcast-mate --input article.md --force-stage script  # 从 script 阶段开始重新执行
-lazy-podcast-mate --input article.md --lenient             # 某个 chunk 永久失败时继续后续流程
+poetry run lazy-podcast-mate --input article.md                       # 一次性完整运行
+poetry run lazy-podcast-mate --input article.md --dry-run-script      # 只打印改写脚本后停止
+poetry run lazy-podcast-mate --input article.md --run-id 2026-04-18-hello   # 继续指定 run
+poetry run lazy-podcast-mate --input article.md --force-stage script  # 从 script 阶段开始重新执行
+poetry run lazy-podcast-mate --input article.md --lenient             # 某个 chunk 永久失败时继续后续流程
 ```
 
 ## 故障排查
