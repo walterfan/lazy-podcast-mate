@@ -51,6 +51,7 @@ _SECRET_KEY_PATTERN = re.compile(
 _VALID_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 _VALID_ON_EXISTING = {"error", "suffix"}
 _VALID_FAILURE_MODES = {"strict", "lenient"}
+_VALID_BOOL_STRINGS = {"true": True, "false": False, "yes": True, "no": False, "on": True, "off": False}
 
 
 def _scan_for_secrets(obj: Any, path: str = "") -> list[str]:
@@ -91,6 +92,20 @@ def _coerce_retry(raw: dict, prefix: str, problems: list[str]) -> RetryConfig:
     except (TypeError, ValueError) as exc:
         problems.append(f"{prefix}.retry is invalid: {exc}")
         return defaults
+
+
+def _coerce_bool(raw: dict, key: str, default: bool, *, prefix: str, problems: list[str]) -> bool:
+    if key not in raw:
+        return default
+    value = raw[key]
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        parsed = _VALID_BOOL_STRINGS.get(value.strip().lower())
+        if parsed is not None:
+            return parsed
+    problems.append(f"{prefix}.{key} must be a boolean")
+    return default
 
 
 def _build_app_config(raw: dict) -> AppConfig:  # noqa: C901 — validation fan-out is intentional
@@ -167,12 +182,20 @@ def _build_app_config(raw: dict) -> AppConfig:  # noqa: C901 — validation fan-
             prompt_version=str(script_raw.get("prompt_version", "v2")),
             token_budget=int(script_raw.get("token_budget", 12000)),
             retry=script_retry,
+            request_timeout_seconds=float(
+                script_raw.get("request_timeout_seconds", 180.0)
+            ),
+            stream=_coerce_bool(
+                script_raw, "stream", False, prefix="script", problems=problems
+            ),
             temperature=temperature,
             top_p=top_p,
             max_tokens=max_tokens,
         )
         if script.token_budget <= 0:
             problems.append("script.token_budget must be > 0")
+        if script.request_timeout_seconds <= 0:
+            problems.append("script.request_timeout_seconds must be > 0")
         if script.temperature is not None and not (0.0 <= script.temperature <= 2.0):
             problems.append("script.temperature must be within [0.0, 2.0]")
         if script.top_p is not None and not (0.0 <= script.top_p <= 1.0):

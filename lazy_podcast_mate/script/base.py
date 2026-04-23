@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Callable, Protocol
 
 
 @dataclass(frozen=True)
@@ -30,5 +30,6 @@ class ScriptRewriter(Protocol):
         cleaned_text: str,
         *,
         metadata: ArticleMetadata,
+        on_delta: Callable[[str], None] | None = None,
     ) -> RewriteResult:
         ...

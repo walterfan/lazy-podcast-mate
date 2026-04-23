@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Callable
 
 import requests
 
@@ -31,7 +32,7 @@ class AnthropicRewriter(ScriptRewriter):
         config: ScriptConfig,
         base_url: str = "https://api.anthropic.com",
         max_tokens: int = 4096,
-        timeout_seconds: float = 60.0,
+        timeout_seconds: float | None = None,
         session: requests.Session | None = None,
     ) -> None:
         self._api_key = api_key
@@ -39,7 +40,9 @@ class AnthropicRewriter(ScriptRewriter):
         self._config = config
         self._base_url = base_url.rstrip("/")
         self._max_tokens = max_tokens
-        self._timeout = timeout_seconds
+        self._timeout = (
+            config.request_timeout_seconds if timeout_seconds is None else timeout_seconds
+        )
         self._session = session or requests.Session()
 
     @classmethod
@@ -50,9 +53,16 @@ class AnthropicRewriter(ScriptRewriter):
             model=env.llm_model,
             config=config,
             base_url=env.llm_base_url or "https://api.anthropic.com",
+            timeout_seconds=config.request_timeout_seconds,
         )
 
-    def rewrite(self, cleaned_text: str, *, metadata: ArticleMetadata) -> RewriteResult:
+    def rewrite(
+        self,
+        cleaned_text: str,
+        *,
+        metadata: ArticleMetadata,
+        on_delta: Callable[[str], None] | None = None,
+    ) -> RewriteResult:
         system_prompt = render_system_prompt(self._config.prompt_version, metadata)
         user_message = build_user_message(cleaned_text)
 

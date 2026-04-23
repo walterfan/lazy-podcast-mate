@@ -115,3 +115,31 @@ def test_bgm_ratio_required_when_bgm_set(monkeypatch, isolated_cwd):
         load_config(env=load_env())
 
     assert any("bgm_ratio" in p for p in excinfo.value.problems)
+
+
+def test_script_request_timeout_seconds_loads_from_yaml(monkeypatch, isolated_cwd):
+    set_valid_env(monkeypatch)
+    cfg = isolated_cwd / "config.yaml"
+    write_minimal_config(cfg)
+    cfg.write_text(
+        cfg.read_text().replace("token_budget: 5000", "token_budget: 5000\n  request_timeout_seconds: 180"),
+        encoding="utf-8",
+    )
+
+    app, _ = load_config(env=load_env())
+
+    assert app.script.request_timeout_seconds == 180.0
+
+
+def test_script_stream_flag_loads_from_yaml(monkeypatch, isolated_cwd):
+    set_valid_env(monkeypatch)
+    cfg = isolated_cwd / "config.yaml"
+    write_minimal_config(cfg)
+    cfg.write_text(
+        cfg.read_text().replace("token_budget: 5000", "token_budget: 5000\n  stream: true"),
+        encoding="utf-8",
+    )
+
+    app, _ = load_config(env=load_env())
+
+    assert app.script.stream is True

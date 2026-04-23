@@ -1,9 +1,11 @@
-"""Unit tests for LLM provider adapters using a mocked `requests.Session`."""
+"""Unit tests for LLM provider adapters using mocked HTTP clients."""
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
+import httpx
 import pytest
 import requests
 
@@ -39,6 +41,48 @@ class _ProgrammableSession:
         if isinstance(item, Exception):
             raise item
         return item
+
+
+class _StreamContext:
+    def __init__(self, response: "_StreamingResponse") -> None:
+        self._response = response
+
+    def __enter__(self) -> "_StreamingResponse":
+        return self._response
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        return None
+
+
+class _StreamingResponse:
+    def __init__(self, status_code: int, lines: list[str], text: str = "") -> None:
+        self.status_code = status_code
+        self._lines = lines
+        self.text = text
+
+    def iter_lines(self):
+        yield from self._lines
+
+
+class _ProgrammableHttpxClient:
+    def __init__(self, responses):
+        self._responses = list(responses)
+        self.calls: list[dict] = []
+
+    def stream(self, method, url, *, headers, json, timeout):
+        self.calls.append(
+            {
+                "method": method,
+                "url": url,
+                "headers": headers,
+                "json": json,
+                "timeout": timeout,
+            }
+        )
+        item = self._responses.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return _StreamContext(item)
 
 
 def _fast_retry() -> RetryConfig:
@@ -156,6 +200,91 @@ def test_openai_compatible_omits_temperature_when_none():
     # Core request shape is preserved.
     assert body["model"] == "claude-opus-4-7"
     assert body["messages"][0]["role"] == "system"
+
+
+def test_openai_compatible_uses_configured_request_timeout():
+    session = _ProgrammableSession(
+        [_FakeResponse(200, {"choices": [{"message": {"content": "ok"}}]})]
+    )
+    cfg = ScriptConfig(
+        prompt_version="v1",
+        token_budget=100_000,
+        retry=_fast_retry(),
+        request_timeout_seconds=180.0,
+    )
+    r = OpenAICompatibleRewriter(
+        api_key="k", base_url="https://api.example.com/v1", model="gpt-4o",
+        config=cfg, session=session,  # type: ignore[arg-type]
+    )
+
+    r.rewrite("x", metadata=_md())
+
+    assert session.calls[0]["timeout"] == 180.0
+
+
+def test_openai_compatible_streams_sse_chunks_into_final_script():
+    cfg = ScriptConfig(
+        prompt_version="v1",
+        token_budget=100_000,
+        retry=_fast_retry(),
+        request_timeout_seconds=180.0,
+        stream=True,
+    )
+    client = _ProgrammableHttpxClient(
+        [
+            _StreamingResponse(
+                200,
+                [
+                    "data: " + json.dumps({"choices": [{"delta": {"content": "Hello"}}]}),
+                    "data: " + json.dumps({"choices": [{"delta": {"content": ", listeners."}}]}),
+                    "data: [DONE]",
+                ],
+            )
+        ]
+    )
+    deltas: list[str] = []
+    r = OpenAICompatibleRewriter(
+        api_key="k", base_url="https://api.example.com/v1", model="gpt-4o",
+        config=cfg, stream_client=client,  # type: ignore[arg-type]
+    )
+
+    out = r.rewrite("x", metadata=_md(), on_delta=deltas.append)
+
+    assert out.script == "Hello, listeners."
+    assert deltas == ["Hello", ", listeners."]
+    assert client.calls[0]["method"] == "POST"
+    assert client.calls[0]["json"]["stream"] is True
+    assert client.calls[0]["timeout"].read == 180.0
+
+
+def test_openai_compatible_streaming_retries_on_httpx_timeout():
+    cfg = ScriptConfig(
+        prompt_version="v1",
+        token_budget=100_000,
+        retry=_fast_retry(),
+        stream=True,
+    )
+    client = _ProgrammableHttpxClient(
+        [
+            httpx.ReadTimeout("boom"),
+            _StreamingResponse(
+                200,
+                [
+                    "data: " + json.dumps({"choices": [{"delta": {"content": "ok"}}]}),
+                    "data: [DONE]",
+                ],
+            ),
+        ]
+    )
+    r = OpenAICompatibleRewriter(
+        api_key="k", base_url="https://api.example.com/v1", model="gpt-4o",
+        config=cfg, stream_client=client,  # type: ignore[arg-type]
+    )
+
+    out = r.rewrite("x", metadata=_md())
+
+    assert out.script == "ok"
+    assert len(client.calls) == 2
 
 
 def test_anthropic_omits_temperature_when_none_keeps_max_tokens():

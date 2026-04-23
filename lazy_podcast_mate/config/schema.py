@@ -39,6 +39,8 @@ class ScriptConfig:
     prompt_version: str = "v2"
     token_budget: int = 12000
     retry: RetryConfig = field(default_factory=RetryConfig)
+    request_timeout_seconds: float = 180.0
+    stream: bool = False
     # Sampling parameters. Set any of these to ``None`` (YAML ``null`` or
     # the literal string ``"omit"``) to drop the field from the request body
     # entirely — required for reasoning-tier models (e.g. Anthropic claude-opus-4-7,

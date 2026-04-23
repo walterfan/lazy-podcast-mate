@@ -10,6 +10,7 @@ pydub>=0.25.1,<0.26.0
 # `audioop-lts` is the PEP 594 replacement and is only needed on 3.13+.
 audioop-lts>=0.2.1; python_version >= "3.13"
 requests>=2.31.0,<3.0.0
+httpx>=0.28.1,<0.29.0
 PyYAML>=6.0,<7.0
 mutagen>=1.47.0,<2.0.0
 

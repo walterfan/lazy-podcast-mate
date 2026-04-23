@@ -37,6 +37,7 @@ poetry install
     Edit `.env` — set `LLM_PROVIDER`, `LLM_API_KEY`, `LLM_MODEL`, `TTS_PROVIDER`, `TTS_API_KEY`.
 
 2. Review `config.yaml` at the project root. The defaults are sensible; you mostly only need to set `tts.voice_id` for your chosen TTS provider. See the voice-ID reference below.
+   If your LLM gateway is slow on long article rewrites, raise `script.request_timeout_seconds` (default: `180.0`). If your OpenAI-compatible gateway supports SSE streaming, set `script.stream: true` to stream tokens during `--dry-run-script`.
 
 ## Quick start
 
@@ -75,6 +76,24 @@ To preview the rewritten script without calling TTS:
 ```bash
 poetry run lazy-podcast-mate --input examples/sample.md --dry-run-script
 ```
+
+With `script.stream: true`, OpenAI-compatible providers stream the script to stdout incrementally during `--dry-run-script` while still saving the final cleaned script to the run checkpoint.
+
+If you want to preview the script and then reuse that exact `script.md`, pass the same `--run-id` to both commands. Otherwise, running the CLI again without `--run-id` creates a new timestamped run and calls the LLM again.
+
+For example, preview first:
+
+```bash
+poetry run lazy-podcast-mate --input examples/sample.md --run-id sample-demo --dry-run-script
+```
+
+If the rewritten script looks good, continue with:
+
+```bash
+poetry run lazy-podcast-mate --input examples/sample.md --run-id sample-demo
+```
+
+The second command reuses `data/runs/sample-demo/script.md` and skips the script-generation stage.
 
 ## Supported providers
 
@@ -138,6 +157,8 @@ poetry run lazy-podcast-mate --input article.md --lenient             # keep goi
 
 - **`ffmpeg` not found** — install it (see Requirements) and reopen your shell. Run `ffmpeg -version` to confirm.
 - **LLM rate-limit / 429** — transient failures are retried with exponential backoff (see `script.retry` in `config.yaml`). If the run still fails, wait and re-run with the same `--run-id` to resume from the last good checkpoint.
+- **LLM read timeout on long articles** — some gateway-backed models take longer than a minute before sending the first byte. Increase `script.request_timeout_seconds` in `config.yaml` (for example `180` or `300`) and retry.
+- **Streaming produces no incremental output** — only `openai_compatible` / `domestic` providers use the new SSE streaming path. Make sure `script.stream: true` is set and your gateway supports `stream: true`.
 - **TTS chunk permanent failure in strict mode** — the run aborts. Open `data/runs/<run_id>/run.log` (JSON lines) to find the offending chunk index and the provider's error message. Fix or shorten the chunk's text in `data/runs/<run_id>/chunks.json`, then re-run with the same `--run-id`.
 - **TTS chunk permanent failure in lenient mode** — pass `--lenient` to flag the chunk in `run.log` and keep going. The final MP3 will have a gap where that chunk would have been.
 - **Resuming a failed run** — pass `--run-id <id>` (the ID is printed at run start and appears in `data/runs/`). Completed stages are skipped automatically; only unfinished work is re-done.

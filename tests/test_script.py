@@ -13,6 +13,7 @@ from lazy_podcast_mate.script.errors import (
     TransientError,
 )
 from lazy_podcast_mate.script.persona import enforce_persona
+from lazy_podcast_mate.script.prompt_builder import build_user_message, render_system_prompt
 from lazy_podcast_mate.script.retry import retry_call
 from lazy_podcast_mate.script.stage import run_script_stage
 
@@ -48,6 +49,27 @@ def test_persona_strips_emoji_and_exclamations():
     assert "！！" not in result
     assert "Hello" in result
     assert "!" in result  # a single exclamation still allowed
+
+
+def test_render_system_prompt_loads_version_from_yaml():
+    prompt = render_system_prompt("v2", _md())
+    assert "Title: t" in prompt
+    assert "Handling bracketed placeholders" in prompt
+
+
+def test_render_system_prompt_loads_chinese_v3_prompt():
+    prompt = render_system_prompt("v3", _md())
+    assert "标题：t" in prompt
+    assert "处理方括号占位符" in prompt
+
+
+def test_render_system_prompt_unknown_version_fails():
+    with pytest.raises(PermanentError, match="prompt version not found"):
+        render_system_prompt("v999", _md())
+
+
+def test_build_user_message_wraps_article_after_delimiter():
+    assert build_user_message("hello") == "---\nhello"
 
 
 def test_token_budget_pre_check():

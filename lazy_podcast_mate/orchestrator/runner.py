@@ -103,6 +103,7 @@ def run_pipeline(
     tts_provider = env.tts_provider
     tts_voice_id = config.tts.voice_id
     output_path: Path | None = None
+    streamed_script_output = False
 
     try:
         # -------- Ingestion + cleaning --------
@@ -127,6 +128,18 @@ def run_pipeline(
         else:
             log.info("stage.script: calling LLM (%s / %s)", llm_provider, llm_model)
             rewriter = build_rewriter(env, config.script)
+            on_delta = None
+            if (
+                options.dry_run_script
+                and config.script.stream
+                and llm_provider in {"openai_compatible", "domestic"}
+            ):
+                streamed_script_output = True
+
+                def _print_delta(delta: str) -> None:
+                    print(delta, end="", flush=True)
+
+                on_delta = _print_delta
             result = run_script_stage(
                 cleaned_text,
                 metadata=ArticleMetadata(
@@ -134,14 +147,18 @@ def run_pipeline(
                 ),
                 rewriter=rewriter,
                 token_budget=config.script.token_budget,
+                on_delta=on_delta,
             )
             script_text = result.script
             paths.script_md.write_text(script_text, encoding="utf-8")
             log.info("stage.script: script written to %s", paths.script_md)
+            if streamed_script_output:
+                print()
 
         if options.dry_run_script:
             log.info("dry-run-script: stopping after script stage")
-            print(script_text)
+            if not streamed_script_output:
+                print(script_text)
             return RunOutcome(
                 run_id=options.run_id, output_path=None, status="success"
             )

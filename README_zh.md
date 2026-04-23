@@ -37,6 +37,7 @@ poetry install
    编辑 `.env`，设置 `LLM_PROVIDER`、`LLM_API_KEY`、`LLM_MODEL`、`TTS_PROVIDER`、`TTS_API_KEY`。
 
 2. 检查项目根目录下的 `config.yaml`。默认值通常已经够用；大多数情况下你只需要为所选 TTS 提供商设置 `tts.voice_id`。可参考下方的 voice-id 对照表。
+   如果你的 LLM 网关在长文章改写时响应较慢，可以调大 `script.request_timeout_seconds`（默认：`180.0`）。如果你的 OpenAI 兼容网关支持 SSE 流式返回，也可以设置 `script.stream: true`，让 `--dry-run-script` 增量输出改写结果。
 
 ## 快速开始
 
@@ -75,6 +76,33 @@ poetry run lazy-podcast-mate --input examples/sample.md
 ```bash
 poetry run lazy-podcast-mate --input examples/sample.md --dry-run-script
 ```
+
+当 `script.stream: true` 时，OpenAI 兼容提供商会在 `--dry-run-script` 期间将脚本逐步输出到终端，同时仍会把最终整理后的脚本写入 run checkpoint。
+
+如果你希望预览完脚本后继续复用同一份 `script.md`，请在两次命令里显式传入同一个 `--run-id`。否则，不带 `--run-id` 的再次执行会生成一个新的时间戳 run，并重新调用 LLM 生成脚本。
+
+例如，先预览：
+
+```bash
+poetry run lazy-podcast-mate --input examples/sample.md --run-id sample-demo --dry-run-script
+```
+
+如果生成的口播脚本符合你的要求，再继续运行：
+
+```bash
+poetry run lazy-podcast-mate --input examples/sample.md --run-id sample-demo
+```
+
+这样第二次运行会复用 `data/runs/sample-demo/script.md`，跳过脚本生成阶段。
+这里的 `run_id`，就是 `data/runs/` 下对应的子目录名。
+
+如果你不关心复用之前的脚本，也可以直接运行不带 `--run-id` 的命令：
+
+```bash
+poetry run lazy-podcast-mate --input examples/sample.md
+```
+
+但这会创建一个新的 run，并再次生成脚本。
 
 ## 支持的提供商
 
@@ -138,6 +166,8 @@ poetry run lazy-podcast-mate --input article.md --lenient             # 某个 c
 
 - **找不到 `ffmpeg`**：请先安装（见“环境要求”），然后重新打开 shell。可运行 `ffmpeg -version` 确认。
 - **LLM 限流 / 429**：瞬时失败会按指数退避自动重试（见 `config.yaml` 中的 `script.retry`）。如果任务仍失败，请等待后使用相同的 `--run-id` 重新执行，从上一个成功检查点恢复。
+- **长文章触发 LLM 读超时**：某些经由网关访问的模型在返回首字节前可能超过一分钟。请在 `config.yaml` 中调大 `script.request_timeout_seconds`（例如 `180` 或 `300`）后重试。
+- **开启 streaming 但没有增量输出**：当前只有 `openai_compatible` / `domestic` 提供商会走新的 SSE 流式路径。请确认已设置 `script.stream: true`，并且你的网关支持 `stream: true`。
 - **严格模式下 TTS chunk 永久失败**：任务会中止。打开 `data/runs/<run_id>/run.log`（JSON lines）查看失败的 chunk 索引和提供商错误信息。修复或缩短 `data/runs/<run_id>/chunks.json` 中对应 chunk 的文本后，再用相同的 `--run-id` 重试。
 - **宽松模式下 TTS chunk 永久失败**：添加 `--lenient`，系统会在 `run.log` 中标记该 chunk 并继续执行。最终 MP3 在该 chunk 位置会有空白。
 - **恢复失败的运行**：传入 `--run-id <id>`（run 启动时会打印，`data/runs/` 下也可见）。已完成的阶段会自动跳过，只重做未完成部分。

@@ -26,9 +26,15 @@ script:
   # v2 (default) adds explicit handling for code / image / table placeholders
   # emitted by the ingestion layer. Use v1 only if you need to reproduce
   # pre-0.2 behaviour.
-  prompt_version: v2
+  prompt_version: v3
   # Soft upper bound on cleaned-article estimated tokens (chars/2 heuristic).
   token_budget: 12000
+  # Read timeout for a single LLM request. Slower gateway-backed models may
+  # need more than 60s for long article rewrites.
+  request_timeout_seconds: 300
+  # Enable OpenAI-compatible SSE streaming. Useful with `--dry-run-script`
+  # to see the rewritten script arrive incrementally.
+  stream: true
   # Sampling parameters.
   # Set any of these to `null` (or the string "omit") to drop the field from
   # the request body — REQUIRED for reasoning-tier models that reject these
